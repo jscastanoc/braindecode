@@ -12,6 +12,7 @@ from braindecode.torch_ext.util import np_to_var, set_random_seeds
 
 log = logging.getLogger(__name__)
 
+import pdb
 
 class RememberBest(object):
     """
