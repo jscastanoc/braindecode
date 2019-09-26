@@ -8,18 +8,26 @@ from matplotlib import patches
 from matplotlib.path import Path
 from matplotlib import cm
 
-from braindecode.datasets.sensor_positions import CHANNEL_10_20_APPROX, \
-    get_channelpos
+from braindecode.datasets.sensor_positions import (
+    CHANNEL_10_20_APPROX,
+    get_channelpos,
+)
 
 
-def ax_scalp(v, channels,
-             ax=None, annotate=False,
-             vmin=None, vmax=None, cmap=cm.coolwarm,
-             scalp_line_width=1,
-             scalp_line_style='solid',
-             chan_pos_list=CHANNEL_10_20_APPROX,
-             interpolation='bilinear',
-             fontsize=8):
+def ax_scalp(
+    v,
+    channels,
+    ax=None,
+    annotate=False,
+    vmin=None,
+    vmax=None,
+    cmap=cm.coolwarm,
+    scalp_line_width=1,
+    scalp_line_style="solid",
+    chan_pos_list=CHANNEL_10_20_APPROX,
+    interpolation="bilinear",
+    fontsize=8,
+):
     """Draw a scalp plot.
 
     Draws a scalp plot on an existing axes. The method takes an array of
@@ -67,18 +75,16 @@ def ax_scalp(v, channels,
     References
     ----------
 
-
     .. [1] Schirrmeister, R. T., Springenberg, J. T., Fiederer, L. D. J.,
-       Glasstetter, M., Eggensperger, K., Tangermann, M., ... & Ball, T. (2017).
+       Glasstetter, M., Eggensperger, K., Tangermann, M., Hutter, F. & Ball, T. (2017).
        Deep learning with convolutional neural networks for EEG decoding and
        visualization.
-       arXiv preprint arXiv:1703.05051.
-
+       Human Brain Mapping , Aug. 2017. Online: http://dx.doi.org/10.1002/hbm.23730
     """
     if ax is None:
         ax = plt.gca()
     assert len(v) == len(channels), "Should be as many values as channels"
-    assert interpolation == 'bilinear' or interpolation == 'nearest'
+    assert interpolation == "bilinear" or interpolation == "nearest"
     if vmin is None:
         # added by me (robintibor@gmail.com)
         assert vmax is None
@@ -87,7 +93,8 @@ def ax_scalp(v, channels,
     points = [get_channelpos(c, chan_pos_list) for c in channels]
     for c in channels:
         assert get_channelpos(c, chan_pos_list) is not None, (
-            "Expect " + c + " to exist in positions")
+            "Expect " + c + " to exist in positions"
+        )
     z = [v[i] for i in range(len(points))]
     # calculate the interpolation
     x = [i[0] for i in points]
@@ -95,33 +102,51 @@ def ax_scalp(v, channels,
     # interpolate the in-between values
     xx = np.linspace(min(x), max(x), 500)
     yy = np.linspace(min(y), max(y), 500)
-    if interpolation == 'bilinear':
+    if interpolation == "bilinear":
         xx_grid, yy_grid = np.meshgrid(xx, yy)
         f = interpolate.LinearNDInterpolator(list(zip(x, y)), z)
         zz = f(xx_grid, yy_grid)
     else:
-        assert interpolation == 'nearest'
+        assert interpolation == "nearest"
         f = interpolate.NearestNDInterpolator(list(zip(x, y)), z)
         assert len(xx) == len(yy)
         zz = np.ones((len(xx), len(yy)))
-        for i_x in xrange(len(xx)):
-            for i_y in xrange(len(yy)):
+        for i_x in range(len(xx)):
+            for i_y in range(len(yy)):
                 # somehow this is correct. don't know why :(
                 zz[i_y, i_x] = f(xx[i_x], yy[i_y])
                 # zz[i_x,i_y] = f(xx[i_x], yy[i_y])
         assert not np.any(np.isnan(zz))
 
     # plot map
-    image = ax.imshow(zz, vmin=vmin, vmax=vmax, cmap=cmap,
-                      extent=[min(x), max(x), min(y), max(y)], origin='lower',
-                      interpolation=interpolation)
+    image = ax.imshow(
+        zz,
+        vmin=vmin,
+        vmax=vmax,
+        cmap=cmap,
+        extent=[min(x), max(x), min(y), max(y)],
+        origin="lower",
+        interpolation=interpolation,
+    )
     if scalp_line_width > 0:
         # paint the head
-        ax.add_artist(plt.Circle((0, 0), 1, linestyle=scalp_line_style,
-                                 linewidth=scalp_line_width, fill=False))
+        ax.add_artist(
+            plt.Circle(
+                (0, 0),
+                1,
+                linestyle=scalp_line_style,
+                linewidth=scalp_line_width,
+                fill=False,
+            )
+        )
         # add a nose
-        ax.plot([-0.1, 0, 0.1], [1, 1.1, 1], color='black',
-                linewidth=scalp_line_width, linestyle=scalp_line_style)
+        ax.plot(
+            [-0.1, 0, 0.1],
+            [1, 1.1, 1],
+            color="black",
+            linewidth=scalp_line_width,
+            linestyle=scalp_line_style,
+        )
         # add ears
         _add_ears(ax, scalp_line_width, scalp_line_style)
     # add markers at channels positions
@@ -136,8 +161,13 @@ def ax_scalp(v, channels,
     # draw the channel names
     if annotate:
         for i in zip(channels, list(zip(x, y))):
-            ax.annotate(" " + i[0], i[1], horizontalalignment="center",
-                        verticalalignment='center', fontsize=fontsize)
+            ax.annotate(
+                " " + i[0],
+                i[1],
+                horizontalalignment="center",
+                verticalalignment="center",
+                fontsize=fontsize,
+            )
     ax.set_aspect(1)
     return image
 
@@ -161,14 +191,16 @@ def _add_ears(ax, linewidth, linestyle):
 
     path = Path(verts, codes)
 
-    patch = patches.PathPatch(path, facecolor='none',
-                              linestyle=linestyle, linewidth=linewidth)
+    patch = patches.PathPatch(
+        path, facecolor="none", linestyle=linestyle, linewidth=linewidth
+    )
 
     ax.add_patch(patch)
     verts_left = [(-x, y) for x, y in verts]
     path_left = Path(verts_left, codes)
 
-    patch_left = patches.PathPatch(path_left, facecolor='none',
-                                   linestyle=linestyle, linewidth=linewidth)
+    patch_left = patches.PathPatch(
+        path_left, facecolor="none", linestyle=linestyle, linewidth=linewidth
+    )
 
     ax.add_patch(patch_left)
