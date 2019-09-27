@@ -3,11 +3,11 @@ import time
 import numpy as np
 from numpy.random import RandomState
 import torch as th
-
 from braindecode.experiments.monitors import (
     LossMonitor,
     MisclassMonitor,
     RuntimeMonitor,
+    PearsonMonitor,
     CroppedTrialMisclassMonitor,
     compute_trial_labels_from_crop_preds,
     compute_pred_labels_from_trial_preds,
@@ -132,6 +132,7 @@ class BaseModel(object):
         remember_best_column=None,
         scheduler=None,
         log_0_epoch=True,
+        stop_criterion=None
     ):
         """
         Fit the model using the given training data.
@@ -208,10 +209,12 @@ class BaseModel(object):
                 batch_size=batch_size,
                 seed=self.seed_rng.randint(0, np.iinfo(np.int32).max - 1),
             )
-        if log_0_epoch:
-            stop_criterion = MaxEpochs(epochs)
-        else:
-            stop_criterion = MaxEpochs(epochs - 1)
+        if stop_criterion is None:
+            if log_0_epoch:
+                stop_criterion = MaxEpochs(epochs)
+            else:
+                stop_criterion = MaxEpochs(epochs - 1)
+            
         train_set = SignalAndTarget(train_X, train_y)
         optimizer = self.optimizer
         if scheduler is not None:
@@ -244,14 +247,11 @@ class BaseModel(object):
         else:
             valid_set = None
         test_set = None
-        self.monitors = [LossMonitor()]
-        if self.cropped:
-            self.monitors.append(CroppedTrialMisclassMonitor(input_time_length))
-        else:
-            self.monitors.append(MisclassMonitor())
+        
+        self.monitors = self.get_monitors(input_time_length)
         if self.extra_monitors is not None:
             self.monitors.extend(self.extra_monitors)
-        self.monitors.append(RuntimeMonitor())
+        
         exp = Experiment(
             self.network,
             train_set,
@@ -406,6 +406,18 @@ class BaseModel(object):
         else:
             outs_per_trial = np.concatenate(all_preds)
         return outs_per_trial
+    
+    def get_monitors(self, input_time_length):
+        monitors = [LossMonitor(), RuntimeMonitor()]
+        if self.cropped:
+            monitors.append(CroppedTrialMisclassMonitor(input_time_length))
+        else:
+            monitors.append(MisclassMonitor())
+        return monitors
+
+class BaseModelRegression(BaseModel):    
+    def get_monitors(self, input_time_length):
+        return [LossMonitor(), PearsonMonitor(), RuntimeMonitor()]
 
 
 def _ensure_float32(X):

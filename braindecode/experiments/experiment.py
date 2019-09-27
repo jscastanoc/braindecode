@@ -1,3 +1,4 @@
+import pdb
 import logging
 from collections import OrderedDict
 from copy import deepcopy
@@ -443,11 +444,18 @@ class Experiment(object):
             all_losses, all_batch_sizes = [], []
             for inputs, targets in batch_generator:
                 preds, loss = self.eval_on_batch(inputs, targets)
+                #pdb.set_trace()
                 all_losses.append(loss)
                 all_batch_sizes.append(len(targets))
                 if all_preds is None:
                     assert all_targets is None
-                    if len(preds.shape) == 2:
+                    if len(preds.shape) == 1: # support for regression 
+                        n_classes = 1
+                        max_size = preds.shape[0]                        
+                        all_preds = np.nan * np.ones(
+                            (n_batches * max_size, ), dtype=np.float32
+                        )
+                    elif len(preds.shape) == 2:
                         # first batch size is largest
                         max_size, n_classes = preds.shape
                         # pre-allocate memory for all predictions and targets

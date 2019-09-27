@@ -1,8 +1,10 @@
+import pdb
 import numpy as np
+import torch as th
 from torch import nn
 from torch.nn import init
 
-from braindecode.models.base import BaseModel
+from braindecode.models.base import BaseModel, BaseModelRegression
 from braindecode.torch_ext.modules import Expression
 from braindecode.torch_ext.functions import safe_log, square
 from braindecode.torch_ext.util import np_to_var
@@ -141,6 +143,56 @@ class ShallowFBCSPNet(BaseModel):
 
         return model
 
+class ShallowFBRegressionNet(BaseModelRegression):
+    def __init__(
+        self,
+        in_chans,
+        input_time_length=None,
+        n_filters_time=40,
+        filter_time_length=25,
+        n_filters_spat=40,
+        pool_time_length=75,
+        pool_time_stride=15,
+        final_conv_length=30,
+        conv_nonlin=square,
+        pool_mode="mean",
+        pool_nonlin=safe_log,
+        split_first_layer=True,
+        batch_norm=True,
+        batch_norm_alpha=0.1,
+        drop_prob=0.5,
+    ):
+        self.n_classes=1
+        if final_conv_length == "auto":
+            assert input_time_length is not None
+        self.__dict__.update(locals())
+        del self.self
+        
+        
+    def create_network(self):
+        model = ShallowFBCSPNet.create_network(self)
+        model = model[:-2]
+        def final_output(x):
+            return th.squeeze(x)
+        
+        model.add_module("squeeze", Expression(final_output))
+    
+    
+        init.xavier_uniform_(model.conv_time.weight, gain=1)
+        # maybe no bias in case of no split layer and batch norm
+        if self.split_first_layer or (not self.batch_norm):
+            init.constant_(model.conv_time.bias, 0)
+        if self.split_first_layer:
+            init.xavier_uniform_(model.conv_spat.weight, gain=1)
+            if not self.batch_norm:
+                init.constant_(model.conv_spat.bias, 0)
+        if self.batch_norm:
+            init.constant_(model.bnorm.weight, 1)
+            init.constant_(model.bnorm.bias, 0)
+        init.xavier_uniform_(model.conv_classifier.weight, gain=1)
+        init.constant_(model.conv_classifier.bias, 0)
+
+        return model
 
 # remove empty dim at end and potentially remove empty time dim
 # do not just use squeeze as we never want to remove first dim

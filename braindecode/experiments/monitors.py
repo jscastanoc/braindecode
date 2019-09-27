@@ -206,7 +206,40 @@ class LossMonitor(object):
         column_name = "{:s}_loss".format(setname)
         return {column_name: mean_loss}
 
+class PearsonMonitor(object):
+    """
+    Monitor the examplewise AUC ROC.
+    
+    Parameters
+    ----------
+    col_suffix: str, optional
+        Name of the column in the monitoring output.
+    threshold_for_binary_case: bool, optional
+        In case of binary classification with only one output prediction
+        per target, define the threshold for separating the classes, i.e.
+        0.5 for sigmoid outputs, or np.log(0.5) for log sigmoid outputs
+    """
 
+    def __init__(self, col_suffix='pearson', *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.col_suffix = col_suffix
+
+    def monitor_epoch(self, ):
+        return
+
+    def monitor_set(self, setname, all_preds, all_losses,
+                    all_batch_sizes, all_targets, dataset):
+        all_pred_labels = np.squeeze(np.vstack(all_preds))
+        all_target_labels = np.squeeze(np.hstack(all_targets))
+        #all_target_labels = np.stack((all_target_labels,
+        #                              np.logical_not(all_target_labels))).T
+        #assert all_pred_labels.shape == all_target_labels.shape
+        #roc_score = roc_auc_score(all_target_labels,all_pred_labels)
+        #pdb.set_trace()
+        pearson_score  = np.corrcoef(all_pred_labels, all_target_labels)[0,1]
+        column_name = "{:s}_{:s}".format(setname, self.col_suffix)
+        return {column_name: float(pearson_score)}
+    
 class ROCMonitor(object):
     """
     Monitor the examplewise AUC ROC.
